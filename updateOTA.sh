@@ -7,4 +7,4 @@ function upload() {
 }
 
 # ping pedal.local
-upload 13.13.13.111
+upload pedal.local #10.0.0.20
