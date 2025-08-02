@@ -34,7 +34,7 @@ struct ADCRead {
       cur = 0;
     else if (cur >= 1 - epsilon)
       cur = 1;
-    if (abs(lastSent - cur) >= epsilon || (cur == 0 && lastSent > 0) ||
+    if (abs(lastSent - cur) >= 2 * epsilon || (cur == 0 && lastSent > 0) ||
         (cur == 1 && lastSent < 1)) {
       if (cur > 0 && cur < 1)
         cur = std::roundf(cur * 1.f / epsilon) * epsilon;
@@ -63,11 +63,11 @@ struct ADCRead {
     auto stepAvg = std::roundf(average * 1.f / epsilon) * epsilon;
     return stepAvg;
   }
-  float epsilon = 0.005;
-  int minResMs = 20;
+  float epsilon = 0.001;
+  int minResMs = 15;
   float lastSent = -1;
   float cur = 0;
-  float alpha = 0.1;
+  // float alpha = 0.1;
   int pin;
   unsigned long lastTimeCheck = 0;
 };
@@ -76,7 +76,7 @@ void readPinTask(void *ADCReadPtr) {
   auto *ptr = static_cast<ADCRead *>(ADCReadPtr);
   while (true) {
     ptr->cur = ptr->updateAVG();
-
-    // vTaskDelay(1 / portTICK_PERIOD_MS);
+    static_assert(1 / portTICK_PERIOD_MS > 0);
+    vTaskDelay(1 / portTICK_PERIOD_MS);
   }
 }

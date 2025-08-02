@@ -1,10 +1,10 @@
+#include "esp_private/wifi.h"
 #include <WiFi.h>
 #include <WiFiMulti.h>
 WiFiMulti multi;
 
-
-#include <nvs_flash.h>
 #include <Preferences.h>
+#include <nvs_flash.h>
 
 Preferences preferences;
 
@@ -32,7 +32,7 @@ void printNets() {
     Serial.println(String(WiFi.SSID(i)) + ": " + WiFi.RSSI(i));
 }
 
-void connectToWifiOrDie() {
+bool tryConnectToWifi() {
 
   {
     // Initialize NVS
@@ -43,16 +43,6 @@ void connectToWifiOrDie() {
       ret = nvs_flash_init();
     }
     ESP_ERROR_CHECK(ret);
-  }
-
-  preferences.begin("pedal", true);
-  // Note: Key name is limited to 15 chars.
-  unsigned int failedBoot = preferences.getUInt("failedBoot", 0);
-  preferences.end();
-  if (failedBoot > 200){
-    // kill wifi if exists
-    WiFi.mode(WIFI_MODE_NULL);
-    esp_deep_sleep_start();
   }
 
 #include "secrets.hpp"
@@ -66,16 +56,28 @@ void connectToWifiOrDie() {
   while ((millis() < endTime) && !tryConnect()) {
     // Serial.print("status");
     Serial.print(WiFi.status());
-    // Serial.print(":: ");
-    // Serial.println(int(WiFi.getTxPower()));
+
     delay(100);
   }
 
   if (WiFi.status() == WL_CONNECTED) {
     setLed(0, RGB_BRIGHTNESS, 0);
+
     delay(1000);
     Serial.print("Successfully connected to network: ");
     Serial.println(WiFi.SSID());
+
+    Serial.print(":: ");
+    Serial.println(int(WiFi.getTxPower()));
+    Serial.print(":: ");
+    Serial.println(WiFi.localIP().toString());
+    return true;
+    // esp_wifi_config_80211_tx_rate((wifi_interface_t)WIFI_IF_STA,
+    //                               WIFI_PHY_RATE_MCS5_LGI);
+    // to enable fixed rate setting it to 802.11n, modulation coding scheme 3
+    // you can use:
+    // ESP_ERROR_CHECK(esp_wifi_internal_set_fix_rate(WIFI_IF_STA, true,
+    //                                                WIFI_PHY_RATE_MCS3_SGI));
   } else {
     setLed(RGB_BRIGHTNESS, 0, 0);
     Serial.println("Failed to connect to a WiFi network");
@@ -84,12 +86,8 @@ void connectToWifiOrDie() {
     printNets();
 #endif
     WiFi.disconnect(true, true);
-    preferences.begin("pedal", false);
-    failedBoot++;
-    preferences.putUInt("failedBoot", failedBoot);
-    preferences.end();
-    delay(10000);
 
-    ESP.restart();
+    delay(10000);
   }
+  return false;
 }
